@@ -41,6 +41,7 @@ jobs:
             -framework CoreFoundation \
             -lproc \
             Bridge/main.m \
+            Bridge/Diagnostics.m \
             -o "$APP/iOSClaudeBridge"
 
           chmod +x "$APP/iOSClaudeBridge"
