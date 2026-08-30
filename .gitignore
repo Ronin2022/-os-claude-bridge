@@ -1,0 +1,4 @@
+Payload/
+*.ipa
+*.log
+.DS_Store
