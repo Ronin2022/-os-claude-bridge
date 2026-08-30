@@ -32,12 +32,14 @@ jobs:
           "$CLANG" \
             -arch arm64 \
             -isysroot "$SDK" \
+            -IBridgeCompat \
             -miphoneos-version-min=15.0 \
             -fobjc-arc \
             -fmodules \
             -framework UIKit \
             -framework Foundation \
             -framework CoreFoundation \
+            -lproc \
             Bridge/main.m \
             -o "$APP/iOSClaudeBridge"
 
