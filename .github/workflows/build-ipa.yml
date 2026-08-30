@@ -1,0 +1,76 @@
+name: Build TrollStore IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build arm64 iOS app
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          CLANG="$(xcrun --sdk iphoneos --find clang)"
+
+          rm -rf Payload ios-claude-bridge.ipa
+          APP="Payload/iOSClaudeBridge.app"
+          mkdir -p "$APP"
+          cp Bridge/Info.plist "$APP/Info.plist"
+
+          "$CLANG" \
+            -arch arm64 \
+            -isysroot "$SDK" \
+            -miphoneos-version-min=15.0 \
+            -fobjc-arc \
+            -fmodules \
+            -framework UIKit \
+            -framework Foundation \
+            -framework CoreFoundation \
+            Bridge/main.m \
+            -o "$APP/iOSClaudeBridge"
+
+          chmod +x "$APP/iOSClaudeBridge"
+          file "$APP/iOSClaudeBridge"
+
+      - name: Ad-hoc sign with TrollStore entitlements
+        shell: bash
+        run: |
+          set -euxo pipefail
+          APP="Payload/iOSClaudeBridge.app"
+          /usr/bin/codesign \
+            --force \
+            --sign - \
+            --entitlements Bridge/Entitlements.plist \
+            --generate-entitlement-der \
+            "$APP"
+
+          /usr/bin/codesign -d --entitlements :- "$APP" 2>&1 | tee embedded-entitlements.txt
+
+      - name: Package IPA
+        shell: bash
+        run: |
+          set -euxo pipefail
+          /usr/bin/zip -qry ios-claude-bridge.ipa Payload
+          unzip -l ios-claude-bridge.ipa | head -50
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-claude-bridge-IPA
+          path: |
+            ios-claude-bridge.ipa
+            embedded-entitlements.txt
+          if-no-files-found: error
+          retention-days: 30
